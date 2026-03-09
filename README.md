@@ -74,7 +74,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) to see the landing page.
+Open [https://aditya-qua.github.io/]((https://aditya-qua.github.io/)) to see the landing page.
 
 ---
 
