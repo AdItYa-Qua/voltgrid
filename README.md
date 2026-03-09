@@ -74,7 +74,7 @@ npm install
 npm run dev
 ```
 
-Open [https://aditya-qua.github.io/](https://aditya-qua.github.io/) to see the landing page.
+Open [https://AdItYa-Qua.github.io/](https://AdItYa-Qua.github.io/) to see the landing page.
 
 ---
 
