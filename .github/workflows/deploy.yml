@@ -38,6 +38,10 @@ jobs:
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
+      - name: SPA routing fix
+        run: cp dist/index.html dist/404.html
+        working-directory: client
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
