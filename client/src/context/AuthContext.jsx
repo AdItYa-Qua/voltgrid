@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
+// In local dev, VITE_API_URL is not set → axios uses relative /api paths (Vite proxy handles it).
+// In production (GitHub Pages), VITE_API_URL is set to the deployed backend URL (e.g. Render).
+if (import.meta.env.VITE_API_URL) {
+  axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+}
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {

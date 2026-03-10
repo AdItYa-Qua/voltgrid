@@ -7,7 +7,20 @@ const app = express();
 const PORT = 5000;
 const JWT_SECRET = 'voltgrid_secret_2024';
 
-app.use(cors());
+app.use(cors({
+  origin: (origin, cb) => {
+    const allowed = [
+      process.env.ALLOWED_ORIGIN,          // e.g. https://adityaqua.github.io
+      'http://localhost:5173',
+      'http://localhost:4173',
+    ].filter(Boolean);
+    // Allow same-origin / no-origin (Postman, curl) or whitelisted origins
+    if (!origin || allowed.some(o => origin.startsWith(o))) return cb(null, true);
+    cb(new Error('CORS: origin not allowed'));
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 
 // ─── In-memory Database ───────────────────────────────────────────
