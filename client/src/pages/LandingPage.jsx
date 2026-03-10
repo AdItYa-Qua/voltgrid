@@ -166,7 +166,7 @@ function Hero() {
             <div className="lp-parallax-wrap">
               <img
                 ref={imgRef}
-                src="/hero-grid.png"
+                src={`${import.meta.env.BASE_URL}hero-grid.png`}
                 alt="VoltGrid energy network illustration"
                 className="lp-parallax-img lp-hero-img"
               />
