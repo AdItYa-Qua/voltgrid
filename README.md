@@ -4,6 +4,8 @@
 
 ![VoltGrid Hero](client/public/hero-grid.png)
 
+Open [https://AdItYa-Qua.github.io/voltgrid](https://AdItYa-Qua.github.io/voltgrid) to see the landing page.
+
 ---
 
 ## 🚀 What is VoltGrid?
@@ -73,8 +75,6 @@ cd client
 npm install
 npm run dev
 ```
-
-Open [https://AdItYa-Qua.github.io/voltgrid](https://AdItYa-Qua.github.io/voltgrid) to see the landing page.
 
 ---
 
