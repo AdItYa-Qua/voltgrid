@@ -4,7 +4,7 @@
 
 ![VoltGrid Hero](client/public/hero-grid.png)
 
-Open [https://AdItYa-Qua.github.io/voltgrid](https://AdItYa-Qua.github.io/voltgrid) to see the landing page.
+Open [https://AdItYa-Qua.github.io/voltgrid](https://aditya-qua.github.io/voltgrid/) to see the landing page.
 
 ---
 
