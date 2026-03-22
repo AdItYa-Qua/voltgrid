@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Zap, Sun, TrendingUp, Leaf, Battery, Car, AlertTriangle, X, ChevronRight, Gift } from 'lucide-react';
+import { Zap, Sun, TrendingUp, Leaf, Battery, Car, AlertTriangle, X, ChevronRight, Gift, BatteryCharging, IndianRupee } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
@@ -27,6 +27,10 @@ export default function ConsumerDashboard() {
   const [evMode, setEvMode] = useState(false);
   const [liveData, setLiveData] = useState([]);
   const liveRef = useRef([]);
+  const [dashTab, setDashTab] = useState('overview');
+  const [smartCharging, setSmartCharging] = useState(true);
+  const [chargeTarget, setChargeTarget] = useState(80);
+  const [chargeByTime, setChargeByTime] = useState('2 PM');
 
   useEffect(() => {
     axios.get('/api/consumer/dashboard').then(r => {
@@ -76,6 +80,16 @@ export default function ConsumerDashboard() {
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      {evMode && (
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          {[['overview','Overview'],['ev','⚡ EV Charging']].map(([id, label]) => (
+            <button key={id} onClick={() => setDashTab(id)} style={{ padding: '0.5rem 1.1rem', borderRadius: '10px', border: `1px solid ${dashTab === id ? '#00d4aa' : '#1e3a5f'}`, background: dashTab === id ? 'rgba(0,212,170,0.12)' : 'transparent', color: dashTab === id ? '#00d4aa' : '#64748b', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>{label}</button>
+          ))}
+        </div>
+      )}
+
+      {dashTab === 'overview' && (<>
       {/* OIS Banner */}
       {outage && (
         <div style={{ background: 'rgba(239,68,68,0.1)', border: '2px solid rgba(239,68,68,0.5)', borderRadius: '14px', padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', animation: 'pulse 1.5s infinite' }}>
@@ -203,6 +217,151 @@ export default function ConsumerDashboard() {
           </a>
         </div>
       )}
+      </>)}
+
+      {/* ══════════ EV CHARGING TAB ══════════ */}
+      {dashTab === 'ev' && (<>
+        <style>{`@keyframes vg-pulse-dot { 0%,100%{ opacity:1; } 50%{ opacity:0.35; } }`}</style>
+
+        {/* A. EV Metric Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+          <MetricCard label="Today's Charge" value="18.4" unit="kWh · 3 sessions today" icon={<BatteryCharging size={15} color="#00d4aa" />} color="#00d4aa" />
+          <MetricCard label="Solar Powered" value="82%" unit="of today's charge from solar" icon={<Sun size={15} color="#22c55e" />} color="#22c55e" />
+          <MetricCard label="Today's Cost" value="₹55" unit="vs ₹147 on grid" icon={<IndianRupee size={15} color="#f59e0b" />} color="#f59e0b" sub="↓ ₹92 saved today" />
+          <MetricCard label="Monthly EV Savings" value="₹2,340" unit="this month vs grid charging" icon={<TrendingUp size={15} color="#00d4aa" />} color="#00d4aa" highlight />
+        </div>
+
+        {/* B. Solar vs Grid Charging Chart */}
+        <div className="glass-card" style={{ marginBottom: '1.5rem' }}>
+          <div style={{ fontWeight: 700, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Sun size={16} color="#00d4aa" /> Daily Charging Source Breakdown
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={[
+              { day: 'Mon', solar: 14.2, grid: 4.1 },
+              { day: 'Tue', solar: 16.8, grid: 1.4 },
+              { day: 'Wed', solar: 9.2, grid: 8.6 },
+              { day: 'Thu', solar: 17.1, grid: 0.8 },
+              { day: 'Fri', solar: 15.4, grid: 2.9 },
+              { day: 'Sat', solar: 18.2, grid: 0 },
+              { day: 'Sun', solar: 13.6, grid: 4.2 },
+            ]}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" />
+              <XAxis dataKey="day" stroke="#4a6080" tick={{ fontSize: 11 }} />
+              <YAxis stroke="#4a6080" tick={{ fontSize: 11 }} unit=" kWh" />
+              <Tooltip contentStyle={{ background: '#0f1729', border: '1px solid #1e3a5f', borderRadius: '8px', fontSize: '0.8rem' }} />
+              <Bar dataKey="solar" name="Solar" stackId="a" fill="#00d4aa" radius={[0,0,0,0]} />
+              <Bar dataKey="grid" name="Grid" stackId="a" fill="#4a6080" radius={[3,3,0,0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          {/* C. Smart Charging Scheduler */}
+          <div className="glass-card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Zap size={16} color="#00d4aa" /> Smart Solar Charging
+              </div>
+              <button onClick={() => setSmartCharging(s => !s)} style={{ width: '44px', height: '24px', borderRadius: '12px', border: 'none', background: smartCharging ? '#00d4aa' : '#2d4a6b', cursor: 'pointer', position: 'relative', transition: 'background 0.3s' }}>
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#fff', position: 'absolute', top: '3px', left: smartCharging ? '23px' : '3px', transition: 'left 0.3s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+              </button>
+            </div>
+            {smartCharging && (
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '1rem', lineHeight: 1.5 }}>
+                Your EV will automatically charge during peak solar hours (11 AM – 3 PM) to maximize solar usage and minimize cost.
+              </div>
+            )}
+            <div style={{ marginBottom: '0.85rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#94a3b8', marginBottom: '0.3rem' }}>
+                <span>Charge target</span>
+                <span style={{ color: '#00d4aa', fontWeight: 700 }}>{chargeTarget}%</span>
+              </div>
+              <input type="range" min={20} max={100} step={5} value={chargeTarget} onChange={e => setChargeTarget(Number(e.target.value))} style={{ width: '100%', accentColor: '#00d4aa' }} />
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '0.3rem' }}>Charge by</div>
+              <select value={chargeByTime} onChange={e => setChargeByTime(e.target.value)} style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #1e3a5f', background: '#0d1829', color: '#e2e8f0', fontSize: '0.82rem', outline: 'none' }}>
+                {['6 AM','7 AM','8 AM','9 AM','10 AM','11 AM','12 PM','1 PM','2 PM','3 PM','4 PM','5 PM','6 PM','7 PM','8 PM','9 PM','10 PM','11 PM'].map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            {/* Charging Status */}
+            <div style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: '10px', padding: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'vg-pulse-dot 2s ease-in-out infinite' }} />
+                <span style={{ background: 'rgba(34,197,94,0.2)', color: '#22c55e', fontSize: '0.72rem', fontWeight: 700, padding: '0.2rem 0.55rem', borderRadius: '6px' }}>Charging ⚡</span>
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Next session: Today 11:30 AM — estimated 2.4 hrs at 7.4 kW</div>
+            </div>
+          </div>
+
+          {/* D. Session History */}
+          <div className="glass-card">
+            <div style={{ fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BatteryCharging size={16} color="#00d4aa" /> Recent Sessions
+            </div>
+            <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #1e3a5f' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.72rem' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(0,212,170,0.08)' }}>
+                    {['Date','Start','Duration','kWh','Source','Cost'].map(h => <th key={h} style={{ padding: '0.5rem 0.5rem', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['Mar 8','11:15 AM','2h 20m','17.1','solar','₹51'],
+                    ['Mar 7','12:00 PM','1h 45m','12.8','solar','₹38'],
+                    ['Mar 6','7:30 PM','1h 10m','8.6','grid','₹69'],
+                    ['Mar 5','11:30 AM','2h 50m','20.7','solar','₹62'],
+                    ['Mar 4','9:00 PM','2h 00m','14.6','grid','₹117'],
+                  ].map(([date,start,dur,kwh,src,cost], i) => (
+                    <tr key={i} style={{ borderTop: '1px solid #1e3a5f', borderLeft: `3px solid ${src === 'solar' ? '#00d4aa' : '#4a6080'}`, background: i % 2 === 0 ? 'rgba(255,255,255,0.015)' : 'transparent' }}>
+                      <td style={{ padding: '0.5rem', color: '#94a3b8' }}>{date}</td>
+                      <td style={{ padding: '0.5rem', color: '#94a3b8' }}>{start}</td>
+                      <td style={{ padding: '0.5rem', color: '#e2e8f0' }}>{dur}</td>
+                      <td style={{ padding: '0.5rem', color: '#e2e8f0', fontWeight: 600 }}>{kwh}</td>
+                      <td style={{ padding: '0.5rem' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.15rem 0.4rem', borderRadius: '4px', background: src === 'solar' ? 'rgba(0,212,170,0.15)' : 'rgba(100,116,139,0.2)', color: src === 'solar' ? '#00d4aa' : '#94a3b8' }}>
+                          {src === 'solar' ? '☀️ Solar' : '⚡ Grid'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.5rem', color: src === 'solar' ? '#22c55e' : '#f59e0b', fontWeight: 700 }}>{cost}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* E. Carbon Impact */}
+        <div className="glass-card" style={{ background: 'linear-gradient(135deg, rgba(34,197,94,0.06), rgba(0,212,170,0.04))', border: '1px solid rgba(34,197,94,0.2)' }}>
+          <div style={{ fontWeight: 700, marginBottom: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Leaf size={16} color="#22c55e" /> EV Carbon Impact
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '0.85rem' }}>
+            <div>
+              <div style={{ fontSize: '0.68rem', color: '#64748b', marginBottom: '0.15rem' }}>Clean Solar Energy</div>
+              <div style={{ fontWeight: 800, fontSize: '1.3rem', color: '#22c55e' }}>82%</div>
+              <div style={{ fontSize: '0.68rem', color: '#4a6080' }}>of EV charging this month</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.68rem', color: '#64748b', marginBottom: '0.15rem' }}>CO₂ Avoided</div>
+              <div style={{ fontWeight: 800, fontSize: '1.3rem', color: '#22c55e' }}>14.2 kg</div>
+              <div style={{ fontSize: '0.68rem', color: '#4a6080' }}>vs petrol vehicle</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.68rem', color: '#64748b', marginBottom: '0.15rem' }}>Clean km Driven</div>
+              <div style={{ fontWeight: 800, fontSize: '1.3rem', color: '#22c55e' }}>1,840</div>
+              <div style={{ fontSize: '0.68rem', color: '#4a6080' }}>km on solar this month</div>
+            </div>
+          </div>
+          <div style={{ height: '6px', background: '#1e2d45', borderRadius: '999px', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: '82%', background: 'linear-gradient(90deg, #00d4aa, #22c55e)', borderRadius: '999px', transition: 'width 0.5s ease' }} />
+          </div>
+          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.35rem' }}>Your EV runs on 82% clean solar energy this month</div>
+        </div>
+      </>)}
     </div>
   );
 }

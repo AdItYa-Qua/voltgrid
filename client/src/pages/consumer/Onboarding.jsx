@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
-import { Home, Zap, Sun, MapPin, Star, ChevronRight, CheckCircle2, Gift } from 'lucide-react';
+import { Home, Zap, Sun, MapPin, Star, ChevronRight, CheckCircle2, Gift, Cpu, Upload, Car } from 'lucide-react';
 
 const STATES = ['Maharashtra','Delhi','Karnataka','Tamil Nadu','Gujarat','Rajasthan','Telangana','Andhra Pradesh','Uttar Pradesh','West Bengal','Madhya Pradesh','Kerala','Punjab','Haryana','Bihar','Other'];
 const CITIES = ['Mumbai','Delhi','Bangalore','Chennai','Hyderabad','Pune','Jaipur','Kolkata','Lucknow','Ahmedabad','Other'];
@@ -35,11 +35,22 @@ export default function ConsumerOnboarding() {
   const navigate = useNavigate();
 
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ homeType: '', state: '', city: '', bill: '', kwh: '', billMode: 'rupees', appliances: [], backupHours: 4, goal: '', acCount: 1 });
+  const [form, setForm] = useState({ homeType: '', state: '', city: '', bill: '', kwh: '', billMode: 'rupees', appliances: [], backupHours: 4, goal: '', acCount: 1, hasEV: false, evModel: '', batteryCapacity: '', chargerType: '', dailyKm: 50, chargingTime: '' });
   const [stateData, setStateData] = useState(null);
   const [subsidy, setSubsidy] = useState(null);
   const [recommendation, setRecommendation] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Step 5 — data source selection
+  const [dataSource, setDataSource] = useState(null); // 'iot' | 'smartmeter' | 'manual'
+  const [smSubOption, setSmSubOption] = useState('gov'); // 'gov' | 'portal'
+  const [smForm, setSmForm] = useState({ caNumber:'', discom:'', authChecked:false, username:'', password:'', showPw:false });
+  const [smStatus, setSmStatus] = useState(null); // null | 'loading' | 'success'
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState(null); // null | 'processing' | 'done'
+  const [helpExpanded, setHelpExpanded] = useState(false);
+
+  const canProceed = dataSource === 'iot' || (dataSource === 'smartmeter' && smStatus === 'success') || (dataSource === 'manual' && uploadStatus === 'done');
 
   useEffect(() => {
     if (form.state) {
@@ -94,7 +105,7 @@ export default function ConsumerOnboarding() {
     finally { setLoading(false); }
   };
 
-  const stepTitles = ['Home Type', 'Location & State', 'Energy Audit', 'Your Needs', 'Your Plan'];
+  const stepTitles = ['Home Type', 'Location & State', 'Energy Audit', 'Your Needs', 'Your Plan', 'Data Source'];
   const progress = ((step) / (stepTitles.length - 1)) * 100;
 
   return (
@@ -233,6 +244,69 @@ export default function ConsumerOnboarding() {
                 </button>
               ))}
             </div>
+
+            {/* EV Section */}
+            <style>{`@keyframes vg-slideDown { from { max-height:0; opacity:0; } to { max-height:600px; opacity:1; } }`}</style>
+            <div style={{ marginTop: '1.75rem', paddingTop: '1.25rem', borderTop: '1px solid #1e3a5f' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
+                <Car size={16} color="#00d4aa" />
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#94a3b8' }}>Electric Vehicle</span>
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#e2e8f0', fontWeight: 600, marginBottom: '0.6rem' }}>Do you own an Electric Vehicle?</div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                {[{ id: true, label: 'Yes' }, { id: false, label: 'No' }].map(opt => (
+                  <button key={String(opt.id)} onClick={() => setForm({ ...form, hasEV: opt.id })} style={{ padding: '0.45rem 1.25rem', borderRadius: '20px', border: `1px solid ${form.hasEV === opt.id ? '#00d4aa' : '#1e3a5f'}`, background: form.hasEV === opt.id ? 'rgba(0,212,170,0.12)' : 'transparent', color: form.hasEV === opt.id ? '#00d4aa' : '#64748b', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>{opt.label}</button>
+                ))}
+              </div>
+
+              {form.hasEV && (
+                <div style={{ animation: 'vg-slideDown 0.35s ease-out', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '0.85rem', background: 'rgba(0,212,170,0.04)', border: '1px solid rgba(0,212,170,0.15)', borderRadius: '12px', padding: '1.1rem' }}>
+                  {/* Vehicle Model */}
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.3rem', display: 'block' }}>Vehicle Model</label>
+                    <input placeholder="e.g. Tata Nexon EV, MG ZS EV, Ather 450X" value={form.evModel} onChange={e => setForm({ ...form, evModel: e.target.value })} style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px', border: '1px solid #1e3a5f', background: 'rgba(0,0,0,0.3)', color: '#e2e8f0', fontSize: '0.82rem', outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                  {/* Battery Capacity */}
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.3rem', display: 'block' }}>Battery Capacity</label>
+                    <select value={form.batteryCapacity} onChange={e => setForm({ ...form, batteryCapacity: e.target.value })} style={{ width: '100%', padding: '0.55rem 0.75rem', borderRadius: '8px', border: '1px solid #1e3a5f', background: '#0d1829', color: form.batteryCapacity ? '#e2e8f0' : '#64748b', fontSize: '0.82rem', outline: 'none' }}>
+                      <option value="">Select battery size</option>
+                      {['Under 10 kWh','10–30 kWh','30–60 kWh','Above 60 kWh'].map(b => <option key={b}>{b}</option>)}
+                    </select>
+                  </div>
+                  {/* Charger Type */}
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.3rem', display: 'block' }}>Charger Type at Home</label>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      {[['slow','Slow AC (3.3 kW)'],['fast','Fast AC (7.4 kW)'],['dc','DC Fast (22 kW+)']].map(([id, label]) => (
+                        <button key={id} onClick={() => setForm({ ...form, chargerType: id })} style={{ padding: '0.4rem 0.85rem', borderRadius: '20px', border: `1px solid ${form.chargerType === id ? '#00d4aa' : '#1e3a5f'}`, background: form.chargerType === id ? 'rgba(0,212,170,0.12)' : 'transparent', color: form.chargerType === id ? '#00d4aa' : '#64748b', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}>{label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Daily Usage Slider */}
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.3rem', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Daily Usage</span>
+                      <span style={{ color: '#00d4aa', fontWeight: 700 }}>{form.dailyKm} km</span>
+                    </label>
+                    <input type="range" min={10} max={200} step={10} value={form.dailyKm} onChange={e => setForm({ ...form, dailyKm: Number(e.target.value) })} style={{ width: '100%', accentColor: '#00d4aa' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#4a6080' }}><span>10 km</span><span>200 km</span></div>
+                  </div>
+                  {/* Preferred Charging Time */}
+                  <div>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.3rem', display: 'block' }}>Preferred Charging Time</label>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      {[['morning','Morning (6–10 AM)'],['afternoon','Afternoon (11 AM–3 PM)'],['evening','Evening (4–8 PM)'],['night','Night (9 PM–6 AM)']].map(([id, label]) => (
+                        <button key={id} onClick={() => setForm({ ...form, chargingTime: id })} style={{ padding: '0.4rem 0.75rem', borderRadius: '20px', border: `1px solid ${form.chargingTime === id ? '#00d4aa' : '#1e3a5f'}`, background: form.chargingTime === id ? 'rgba(0,212,170,0.12)' : 'transparent', color: form.chargingTime === id ? '#00d4aa' : '#64748b', fontSize: '0.73rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          {label}
+                          {id === 'afternoon' && <span style={{ background: 'rgba(34,197,94,0.2)', color: '#22c55e', fontSize: '0.6rem', fontWeight: 700, padding: '0.1rem 0.35rem', borderRadius: '4px', whiteSpace: 'nowrap' }}>☀️ Solar Peak</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -281,9 +355,40 @@ export default function ConsumerOnboarding() {
                 ⏱️ Expected timeline: {subsidy?.processingTime || '4–8 weeks'} · VoltGrid handles all DISCOM paperwork
               </div>
 
-              <button onClick={() => handleSubmit()} disabled={loading} style={{ width: '100%', background: 'linear-gradient(135deg, #00d4aa, #22c55e)', color: '#0a0f1e', fontWeight: 800, borderRadius: '10px', padding: '0.875rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
-                {loading ? 'Subscribing…' : <><Sun size={16} /> Subscribe & Go to Dashboard</>}
-              </button>
+              <div style={{ textAlign: 'center', fontSize: '0.8rem', color: '#64748b', padding: '0.5rem 0', fontStyle: 'italic' }}>Continue to connect your energy data source →</div>
+
+              {/* EV Charging Estimate */}
+              {form.hasEV && (() => {
+                const dailyKwh = +(form.dailyKm / 6).toFixed(1);
+                const monthlyGrid = Math.round(dailyKwh * 30 * 8);
+                const monthlySolar = Math.round(dailyKwh * 30 * 3);
+                const monthlySavings = monthlyGrid - monthlySolar;
+                const coverage = { afternoon: '~85%', morning: '~60%', evening: '~35%', night: '~10%' }[form.chargingTime] || '~50%';
+                return (
+                  <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(0,212,170,0.15)', paddingTop: '1rem' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#00d4aa', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Car size={16} /> EV Charging Estimate</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '0.85rem' }}>
+                      {[
+                        { l: 'Daily Charging Need', v: `${dailyKwh} kWh` },
+                        { l: 'Solar Coverage', v: coverage },
+                        { l: 'Monthly Cost (Grid)', v: `₹${monthlyGrid.toLocaleString()}` },
+                        { l: 'Monthly Cost (Solar)', v: `₹${monthlySolar.toLocaleString()}` },
+                      ].map(item => (
+                        <div key={item.l} style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '0.6rem' }}>
+                          <div style={{ fontSize: '0.62rem', color: '#64748b', marginBottom: '0.15rem' }}>{item.l}</div>
+                          <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: '0.88rem' }}>{item.v}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: '10px', padding: '0.75rem', marginBottom: '0.65rem', fontSize: '0.78rem', color: '#f59e0b', lineHeight: 1.5 }}>
+                      ⚡ Charging your EV on solar through VoltGrid saves you approximately <strong>₹{monthlySavings.toLocaleString()}/month</strong> compared to grid charging.
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', lineHeight: 1.5 }}>
+                      🔋 Smart Solar Charging will be auto-enabled for your account. Your EV will be prioritized to charge during peak solar generation hours.
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <button onClick={() => navigate('/plans')} style={{ width: '100%', background: 'transparent', color: '#00d4aa', border: '1px solid rgba(0,212,170,0.3)', borderRadius: '10px', padding: '0.75rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
@@ -292,8 +397,295 @@ export default function ConsumerOnboarding() {
           </div>
         )}
 
+        {/* Step 5: Connect Your Energy Data */}
+        {step === 5 && recommendation && (
+          <div>
+            <h2 style={{ fontWeight: 800, fontSize: '1.4rem', marginBottom: '0.25rem' }}>Connect Your Energy Data</h2>
+            <p style={{ color: '#64748b', marginBottom: '0.75rem', fontSize: '0.875rem' }}>How would you like us to track your energy consumption?</p>
+
+            {/* Helper accordion */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <button onClick={() => setHelpExpanded(h => !h)} style={{ background: 'none', border: 'none', color: '#00d4aa', fontSize: '0.8rem', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                🤔 Which option is right for me? {helpExpanded ? '▲' : '▼'}
+              </button>
+              {helpExpanded && (
+                <div style={{ marginTop: '0.6rem', background: 'rgba(0,212,170,0.06)', border: '1px solid rgba(0,212,170,0.2)', borderRadius: '10px', padding: '0.875rem', fontSize: '0.78rem', color: '#94a3b8', lineHeight: 1.6 }}>
+                  <div style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#00d4aa' }}>⚡ IoT Smart Sensor</strong> — Best for real-time accuracy. Ideal if you want live monitoring and instant alerts.</div>
+                  <div style={{ marginBottom: '0.4rem' }}><strong style={{ color: '#22c55e' }}>📡 Smart Meter</strong> — Free option if you already have a government NSMP smart meter. Zero extra hardware.</div>
+                  <div><strong style={{ color: '#94a3b8' }}>📄 Manual Upload</strong> — Easiest to start. Good for savings estimates. Least precise for daily tracking.</div>
+                </div>
+              )}
+            </div>
+
+            {/* Spinner keyframes */}
+            <style>{`@keyframes vg-spin { to { transform: rotate(360deg); } }`}</style>
+
+            {/* Option Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+
+              {/* ── OPTION 1: IoT Smart Sensor ── */}
+              <div onClick={() => { setDataSource('iot'); setSmStatus(null); setUploadStatus(null); setUploadFile(null); }}
+                style={{ borderRadius: '14px', border: `2px solid ${dataSource === 'iot' ? '#00d4aa' : '#1e3a5f'}`, background: dataSource === 'iot' ? 'rgba(0,212,170,0.07)' : 'rgba(255,255,255,0.02)', boxShadow: dataSource === 'iot' ? '0 0 20px rgba(0,212,170,0.18)' : 'none', opacity: dataSource && dataSource !== 'iot' ? 0.55 : 1, cursor: 'pointer', padding: '1.25rem', transition: 'all 0.25s' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <Cpu size={22} color="#00d4aa" />
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: '0.95rem' }}>Install IoT Sensor</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Most accurate real-time data</div>
+                    </div>
+                  </div>
+                  <span style={{ background: 'rgba(251,191,36,0.15)', color: '#f59e0b', fontSize: '0.65rem', fontWeight: 700, borderRadius: '6px', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}>Hardware Required</span>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '0.75rem', lineHeight: 1.5 }}>We install a certified smart energy sensor at your meter box. Tracks live consumption, voltage, current, and power factor every 15 seconds.</p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '0.4rem' }}>
+                  {[['Device Cost','₹2,499','one-time'],['Installation','₹499','one-time'],['Monthly Service','₹99','/month']].map(([l,v,s]) => (
+                    <div key={l} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '0.5rem', textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.6rem', color: '#64748b' }}>{l}</div>
+                      <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: '0.85rem' }}>{v}</div>
+                      <div style={{ fontSize: '0.6rem', color: '#64748b' }}>{s}</div>
+                    </div>
+                  ))}
+                </div>
+                {dataSource === 'iot' && (
+                  <div style={{ marginTop: '0.85rem', background: 'rgba(0,212,170,0.1)', border: '1px solid rgba(0,212,170,0.25)', borderRadius: '8px', padding: '0.75rem', fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.5 }}>
+                    💡 A VoltGrid technician will visit during your inspection appointment to install the sensor. You will be billed <strong style={{ color: '#00d4aa' }}>₹2,998 once on activation</strong> and <strong style={{ color: '#00d4aa' }}>₹99 added to your monthly plan</strong>.
+                  </div>
+                )}
+              </div>
+
+              {/* ── OPTION 2: Smart Meter ── */}
+              <div onClick={() => { setDataSource('smartmeter'); setUploadStatus(null); setUploadFile(null); }}
+                style={{ borderRadius: '14px', border: `2px solid ${dataSource === 'smartmeter' ? '#00d4aa' : '#1e3a5f'}`, background: dataSource === 'smartmeter' ? 'rgba(0,212,170,0.07)' : 'rgba(255,255,255,0.02)', boxShadow: dataSource === 'smartmeter' ? '0 0 20px rgba(0,212,170,0.18)' : 'none', opacity: dataSource && dataSource !== 'smartmeter' ? 0.55 : 1, cursor: 'pointer', padding: '1.25rem', transition: 'all 0.25s' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <Zap size={22} color="#00d4aa" />
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: '0.95rem' }}>Connect Smart Meter</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>No hardware needed</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
+                    <span style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontSize: '0.62rem', fontWeight: 700, borderRadius: '6px', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}>Free • No Hardware</span>
+                    <span style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', fontSize: '0.62rem', fontWeight: 700, borderRadius: '6px', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}>Smart Meter Required</span>
+                  </div>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '0.75rem', lineHeight: 1.5 }}>If your home has a government smart meter installed under the NSMP scheme, we can pull your daily consumption data directly from your DISCOM's system with your consent.</p>
+
+                {dataSource === 'smartmeter' && (
+                  <div onClick={e => e.stopPropagation()}>
+                    {/* Sub-option tabs */}
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+                      {[['gov','Via Government Portal'],['portal','Via DISCOM Portal Login']].map(([id, label]) => (
+                        <button key={id} onClick={() => { setSmSubOption(id); setSmStatus(null); setSmForm(f => ({ ...f, caNumber:'', discom:'', authChecked:false, username:'', password:'', showPw:false })); }}
+                          style={{ flex: 1, padding: '0.5rem 0.25rem', borderRadius: '8px', border: `1px solid ${smSubOption === id ? '#00d4aa' : '#1e3a5f'}`, background: smSubOption === id ? 'rgba(0,212,170,0.1)' : 'transparent', color: smSubOption === id ? '#00d4aa' : '#64748b', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Gov Portal sub-form */}
+                    {smSubOption === 'gov' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.5 }}>Authorize VoltGrid to access your meter data through BEE's national energy data framework. Most secure and official route.</div>
+                        <input placeholder="CA Number (found on your electricity bill)" value={smForm.caNumber} onChange={e => setSmForm(f => ({ ...f, caNumber: e.target.value }))}
+                          style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid #1e3a5f', background: 'rgba(0,0,0,0.3)', color: '#e2e8f0', fontSize: '0.82rem', outline: 'none', boxSizing: 'border-box' }} />
+                        <select value={smForm.discom} onChange={e => setSmForm(f => ({ ...f, discom: e.target.value }))}
+                          style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid #1e3a5f', background: '#0d1829', color: smForm.discom ? '#e2e8f0' : '#64748b', fontSize: '0.82rem', outline: 'none' }}>
+                          <option value="">Select your DISCOM</option>
+                          {['BESCOM','MSEDCL','TPDDL','UPPCL','TNEB','CESC','Other'].map(d => <option key={d}>{d}</option>)}
+                        </select>
+                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.75rem', color: '#94a3b8', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={smForm.authChecked} onChange={e => setSmForm(f => ({ ...f, authChecked: e.target.checked }))} style={{ marginTop: '2px', accentColor: '#00d4aa' }} />
+                          I authorize VoltGrid to access my meter data for energy monitoring purposes
+                        </label>
+                        {smStatus !== 'success' && (
+                          <button disabled={!smForm.caNumber || !smForm.discom || !smForm.authChecked || smStatus === 'loading'}
+                            onClick={() => { setSmStatus('loading'); setTimeout(() => setSmStatus('success'), 1500); }}
+                            style={{ padding: '0.65rem', borderRadius: '8px', border: 'none', background: (!smForm.caNumber || !smForm.discom || !smForm.authChecked) ? '#1e3a5f' : 'linear-gradient(135deg,#00d4aa,#22c55e)', color: (!smForm.caNumber || !smForm.discom || !smForm.authChecked) ? '#4a6080' : '#0a0f1e', fontWeight: 700, fontSize: '0.82rem', cursor: (!smForm.caNumber || !smForm.discom || !smForm.authChecked) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                            {smStatus === 'loading'
+                              ? <><span style={{ width: '13px', height: '13px', border: '2px solid #00d4aa', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'vg-spin 0.7s linear infinite' }} /> Verifying…</>
+                              : 'Verify & Connect'}
+                          </button>
+                        )}
+                        {smStatus === 'success' && (
+                          <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px', padding: '0.65rem 0.85rem', fontSize: '0.78rem', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <CheckCircle2 size={16} /> Smart meter connected. Daily data will sync every 24 hours.
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* DISCOM Portal sub-form */}
+                    {smSubOption === 'portal' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', lineHeight: 1.5 }}>Securely connect your DISCOM consumer portal account. We fetch your consumption history and bills on your behalf. Your credentials are encrypted and never stored.</div>
+                        <input placeholder="DISCOM Portal Username" value={smForm.username} onChange={e => setSmForm(f => ({ ...f, username: e.target.value }))}
+                          style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid #1e3a5f', background: 'rgba(0,0,0,0.3)', color: '#e2e8f0', fontSize: '0.82rem', outline: 'none', boxSizing: 'border-box' }} />
+                        <div style={{ position: 'relative' }}>
+                          <input type={smForm.showPw ? 'text' : 'password'} placeholder="DISCOM Portal Password" value={smForm.password} onChange={e => setSmForm(f => ({ ...f, password: e.target.value }))}
+                            style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 0.75rem', borderRadius: '8px', border: '1px solid #1e3a5f', background: 'rgba(0,0,0,0.3)', color: '#e2e8f0', fontSize: '0.82rem', outline: 'none', boxSizing: 'border-box' }} />
+                          <button type="button" onClick={() => setSmForm(f => ({ ...f, showPw: !f.showPw }))}
+                            style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}>
+                            {smForm.showPw ? 'Hide' : 'Show'}
+                          </button>
+                        </div>
+                        <select value={smForm.discom} onChange={e => setSmForm(f => ({ ...f, discom: e.target.value }))}
+                          style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '8px', border: '1px solid #1e3a5f', background: '#0d1829', color: smForm.discom ? '#e2e8f0' : '#64748b', fontSize: '0.82rem', outline: 'none' }}>
+                          <option value="">Select your DISCOM</option>
+                          {['BESCOM','MSEDCL','TPDDL','UPPCL','TNEB','CESC','Other'].map(d => <option key={d}>{d}</option>)}
+                        </select>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>🔒 Bank-level 256-bit encryption. We never store your password. Read-only access only.</div>
+                        {smStatus !== 'success' && (
+                          <button disabled={!smForm.username || !smForm.password || !smForm.discom || smStatus === 'loading'}
+                            onClick={() => { setSmStatus('loading'); setTimeout(() => setSmStatus('success'), 2000); }}
+                            style={{ padding: '0.65rem', borderRadius: '8px', border: 'none', background: (!smForm.username || !smForm.password || !smForm.discom) ? '#1e3a5f' : 'linear-gradient(135deg,#00d4aa,#22c55e)', color: (!smForm.username || !smForm.password || !smForm.discom) ? '#4a6080' : '#0a0f1e', fontWeight: 700, fontSize: '0.82rem', cursor: (!smForm.username || !smForm.password || !smForm.discom) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                            {smStatus === 'loading'
+                              ? <><span style={{ width: '13px', height: '13px', border: '2px solid #00d4aa', borderTopColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'vg-spin 0.7s linear infinite' }} /> Connecting…</>
+                              : 'Connect Portal'}
+                          </button>
+                        )}
+                        {smStatus === 'success' && (
+                          <div>
+                            <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px', padding: '0.65rem 0.85rem', fontSize: '0.78rem', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                              <CheckCircle2 size={16} /> Portal connected. Fetching last 90 days of consumption data...
+                            </div>
+                            <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #1e3a5f' }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                                <thead>
+                                  <tr style={{ background: 'rgba(0,212,170,0.1)' }}>
+                                    {['Date','Units Consumed','Amount'].map(h => <th key={h} style={{ padding: '0.5rem 0.75rem', textAlign: 'left', color: '#00d4aa', fontWeight: 700 }}>{h}</th>)}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {[['20 Mar 2026','14.2 kWh','₹99.40'],['19 Mar 2026','11.8 kWh','₹82.60'],['18 Mar 2026','16.5 kWh','₹115.50']].map(([d,u,a]) => (
+                                    <tr key={d} style={{ borderTop: '1px solid #1e3a5f' }}>
+                                      <td style={{ padding: '0.5rem 0.75rem', color: '#94a3b8' }}>{d}</td>
+                                      <td style={{ padding: '0.5rem 0.75rem', color: '#e2e8f0', fontWeight: 600 }}>{u}</td>
+                                      <td style={{ padding: '0.5rem 0.75rem', color: '#22c55e', fontWeight: 600 }}>{a}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── OPTION 3: Manual / Bill Upload ── */}
+              <div onClick={() => { setDataSource('manual'); setSmStatus(null); }}
+                style={{ borderRadius: '14px', border: `2px solid ${dataSource === 'manual' ? '#00d4aa' : '#1e3a5f'}`, background: dataSource === 'manual' ? 'rgba(0,212,170,0.07)' : 'rgba(255,255,255,0.02)', boxShadow: dataSource === 'manual' ? '0 0 20px rgba(0,212,170,0.18)' : 'none', opacity: dataSource && dataSource !== 'manual' ? 0.55 : 1, cursor: 'pointer', padding: '1.25rem', transition: 'all 0.25s' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <Upload size={22} color="#00d4aa" />
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: '0.95rem' }}>Upload Electricity Bill</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Quick setup, monthly updates</div>
+                    </div>
+                  </div>
+                  <span style={{ background: 'rgba(100,116,139,0.2)', color: '#94a3b8', fontSize: '0.65rem', fontWeight: 700, borderRadius: '6px', padding: '0.2rem 0.5rem', whiteSpace: 'nowrap' }}>Manual Updates</span>
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '0.5rem', lineHeight: 1.5 }}>Upload a photo or PDF of your latest electricity bill. Our system reads your consumption, tariff, and CA number automatically using OCR.</p>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', fontStyle: 'italic' }}>⚠️ Least accurate for daily tracking. Recommended only if smart meter is unavailable.</div>
+
+                {dataSource === 'manual' && (
+                  <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.85rem' }}>
+                    {uploadStatus !== 'done' && (
+                      <label
+                        style={{ display: 'block', border: '2px dashed #2d4a6b', borderRadius: '10px', padding: '1.5rem', textAlign: 'center', cursor: 'pointer', background: 'rgba(0,0,0,0.15)', transition: 'border-color 0.2s' }}
+                        onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#00d4aa'; }}
+                        onDragLeave={e => { e.currentTarget.style.borderColor = '#2d4a6b'; }}
+                        onDrop={e => { e.preventDefault(); e.currentTarget.style.borderColor = '#2d4a6b'; const f = e.dataTransfer.files[0]; if (f) { setUploadFile(f); setUploadStatus('processing'); setTimeout(() => setUploadStatus('done'), 2000); } }}>
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }}
+                          onChange={e => { const f = e.target.files[0]; if (f) { setUploadFile(f); setUploadStatus('processing'); setTimeout(() => setUploadStatus('done'), 2000); } }} />
+                        {uploadStatus === 'processing'
+                          ? <div style={{ color: '#00d4aa', fontSize: '0.82rem' }}>
+                              <span style={{ display: 'inline-block', width: '13px', height: '13px', border: '2px solid #00d4aa', borderTopColor: 'transparent', borderRadius: '50%', animation: 'vg-spin 0.7s linear infinite', marginRight: '0.5rem', verticalAlign: 'middle' }} />
+                              Reading bill… Extracting data…
+                            </div>
+                          : <div>
+                              <div style={{ fontSize: '1.5rem', marginBottom: '0.4rem' }}>📄</div>
+                              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Drag & drop your bill here, or <span style={{ color: '#00d4aa' }}>click to browse</span></div>
+                              {uploadFile && <div style={{ marginTop: '0.4rem', fontSize: '0.72rem', color: '#00d4aa' }}>{uploadFile.name}</div>}
+                              <div style={{ fontSize: '0.7rem', color: '#4a6080', marginTop: '0.2rem' }}>PDF, JPG, PNG supported</div>
+                            </div>
+                        }
+                      </label>
+                    )}
+                    {uploadStatus === 'done' && (
+                      <div>
+                        <div style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: '8px', padding: '0.65rem 0.85rem', fontSize: '0.78rem', color: '#22c55e', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                          <CheckCircle2 size={16} /> Bill data extracted. You can re-upload each month or upgrade to Smart Meter anytime.
+                        </div>
+                        <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '0.85rem' }}>
+                          <div style={{ fontWeight: 700, color: '#94a3b8', marginBottom: '0.5rem', fontSize: '0.7rem', letterSpacing: '0.05em' }}>EXTRACTED DATA</div>
+                          {[['CA Number','MH-2024-88341'],['DISCOM','MSEDCL'],['Units Last Month','312 kWh'],['Bill Amount','₹2,184']].map(([k,v]) => (
+                            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.3rem', borderBottom: '1px solid #1e3a5f', marginBottom: '0.3rem', fontSize: '0.78rem' }}>
+                              <span style={{ color: '#64748b' }}>{k}</span>
+                              <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Updated Cost Summary */}
+            {dataSource && (
+              <div style={{ background: 'linear-gradient(135deg, rgba(0,212,170,0.1), rgba(34,197,94,0.05))', border: '1px solid rgba(0,212,170,0.25)', borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1.25rem' }}>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '0.6rem' }}>UPDATED COST SUMMARY</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>Plan ({{ virtual:'Virtual Solar', rooftop:'Rooftop Solar', hybrid:'Hybrid Pro', society:'Society Plan' }[recommendation.planId]})</span>
+                  <span style={{ fontWeight: 700, color: '#e2e8f0' }}>₹{{ virtual:999, rooftop:1999, hybrid:2999, society:8999 }[recommendation.planId]}/mo</span>
+                </div>
+                {dataSource === 'iot' && (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                      <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>IoT Sensor Service</span>
+                      <span style={{ fontWeight: 700, color: '#00d4aa' }}>+₹99/mo</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.4rem', borderTop: '1px solid #1e3a5f' }}>
+                      <span style={{ fontSize: '0.78rem', color: '#f59e0b' }}>One-time Setup Cost</span>
+                      <span style={{ fontWeight: 700, color: '#f59e0b' }}>₹2,998</span>
+                    </div>
+                  </>
+                )}
+                {dataSource === 'smartmeter' && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <span style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', fontSize: '0.72rem', fontWeight: 700, borderRadius: '6px', padding: '0.2rem 0.6rem' }}>No additional cost</span>
+                  </div>
+                )}
+                {dataSource === 'manual' && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <span style={{ background: 'rgba(100,116,139,0.2)', color: '#94a3b8', fontSize: '0.72rem', fontWeight: 700, borderRadius: '6px', padding: '0.2rem 0.6rem' }}>Manual updates</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Final CTA — only visible when complete */}
+            {canProceed ? (
+              <button onClick={() => handleSubmit()} disabled={loading}
+                style={{ width: '100%', background: 'linear-gradient(135deg, #00d4aa, #22c55e)', color: '#0a0f1e', fontWeight: 800, borderRadius: '10px', padding: '0.875rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.95rem', marginBottom: '0.75rem' }}>
+                {loading ? 'Subscribing…' : <><Sun size={16} /> Accept Plan & Schedule Inspection</>}
+              </button>
+            ) : dataSource && (
+              <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#64748b', marginBottom: '0.75rem', padding: '0.5rem' }}>
+                {dataSource === 'smartmeter' ? '⬆️ Complete the connection above to proceed.' : dataSource === 'manual' ? '⬆️ Upload your bill above to proceed.' : ''}
+              </div>
+            )}
+            <button onClick={() => navigate('/plans')} style={{ width: '100%', background: 'transparent', color: '#00d4aa', border: '1px solid rgba(0,212,170,0.3)', borderRadius: '10px', padding: '0.75rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>See All Plans Instead →</button>
+          </div>
+        )}
+
         {/* Navigation */}
-        {step < 4 && (
+        {step < 5 && (
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '2rem' }}>
             {step > 0 && (
               <button onClick={() => setStep(s => s - 1)} style={{ flex: 1, background: 'transparent', color: '#64748b', border: '1px solid #1e3a5f', borderRadius: '10px', padding: '0.75rem', cursor: 'pointer', fontWeight: 600 }}>← Back</button>

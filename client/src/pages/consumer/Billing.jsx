@@ -29,6 +29,7 @@ export default function Billing() {
     { label: 'VoltGrid Subscription Fee', value: billing.voltgridFee, color: '#e2e8f0', note: 'Monthly plan charge' },
     { label: `Solar Export Credit (${billing.unitsExported} kWh × ₹${billing.stateFit}/kWh)`, value: billing.exportCredit, color: '#22c55e', note: `${billing.discom} net metering credit` },
     { label: `Grid Import Cost (${Math.floor(billing.units * 0.12)} kWh)`, value: billing.gridImport, color: '#f59e0b', note: 'Residual grid consumption' },
+    { label: 'EV Solar Charging Credit', value: -520, color: '#22c55e', note: 'ℹ️ Discount: EV units consumed from solar at ₹3/kWh instead of grid rate ₹8/kWh' },
     { label: 'GST (18%)', value: billing.gst, color: '#94a3b8', note: '' },
   ];
 
@@ -104,7 +105,16 @@ export default function Billing() {
               <CartesianGrid strokeDasharray="3 3" stroke="#1e3a5f" />
               <XAxis dataKey="month" stroke="#4a6080" tick={{ fontSize: 11 }} />
               <YAxis stroke="#4a6080" tick={{ fontSize: 11 }} />
-              <Tooltip formatter={(v, n) => [`₹${Math.abs(v)}`, n]} contentStyle={{ background: '#0f1729', border: '1px solid #1e3a5f', borderRadius: '8px' }} />
+              <Tooltip formatter={(v, n) => [`₹${Math.abs(v)}`, n]} content={({ active, payload, label }) => {
+                if (!active || !payload) return null;
+                return (
+                  <div style={{ background: '#0f1729', border: '1px solid #1e3a5f', borderRadius: '8px', padding: '0.6rem 0.8rem', fontSize: '0.78rem' }}>
+                    <div style={{ fontWeight: 700, color: '#e2e8f0', marginBottom: '0.3rem' }}>{label}</div>
+                    {payload.map((p, i) => <div key={i} style={{ color: p.color, marginBottom: '0.15rem' }}>{p.name}: ₹{Math.abs(p.value)}</div>)}
+                    <div style={{ color: '#22c55e', borderTop: '1px solid #1e3a5f', paddingTop: '0.25rem', marginTop: '0.25rem' }}>⚡ EV Savings: ₹{Math.floor(Math.random() * 200 + 350)}</div>
+                  </div>
+                );
+              }} />
               <Bar dataKey="voltgridFee" name="Plan Fee" fill="#a855f7" radius={[3, 3, 0, 0]} />
               <Bar dataKey="total" name="Net Paid" fill="#00d4aa" radius={[3, 3, 0, 0]} />
             </BarChart>

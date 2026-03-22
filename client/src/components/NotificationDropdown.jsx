@@ -1,20 +1,26 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import { Bell, X, Zap, CreditCard, Calendar, AlertTriangle } from 'lucide-react';
+import { Bell, X, Zap, CreditCard, Calendar, AlertTriangle, Car, Sun } from 'lucide-react';
 
 const icons = {
   outage: <AlertTriangle size={14} color="#ef4444" />,
   billing: <CreditCard size={14} color="#00d4aa" />,
   appointment: <Calendar size={14} color="#22c55e" />,
   device: <Zap size={14} color="#f59e0b" />,
+  ev: <Car size={14} color="#00d4aa" />,
 };
+
+const evMockNotifs = [
+  { id: 'ev-1', type: 'ev', message: 'Smart charging complete. Your EV charged 18.4 kWh \u2014 82% from solar. Cost: \u20B955', time: new Date(Date.now() - 3600000).toISOString(), read: false },
+  { id: 'ev-2', type: 'ev', message: 'Solar peak starting. Smart charging activated for your EV.', time: new Date(Date.now() - 10800000).toISOString(), read: true },
+];
 
 export default function NotificationDropdown({ onClose }) {
   const [notifs, setNotifs] = useState([]);
   const ref = useRef();
 
   useEffect(() => {
-    axios.get('/api/notifications').then(r => setNotifs(r.data));
+    axios.get('/api/notifications').then(r => setNotifs([...evMockNotifs, ...r.data]));
     axios.post('/api/notifications/mark-read');
     const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
     document.addEventListener('mousedown', handler);
